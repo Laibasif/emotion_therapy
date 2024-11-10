@@ -6,31 +6,11 @@ from langchain_groq import ChatGroq
 class State(TypedDict):
     messages: List[str]  # List of messages
 
-# Define a basic StateGraph class (if it is not available from a library)
-class StateGraph:
-    def __init__(self, state_type):
-        self.state_type = state_type
-        self.nodes = {}
-        self.edges = []
-
-    def add_node(self, name, func):
-        self.nodes[name] = func
-
-    def add_edge(self, start, end):
-        self.edges.append((start, end))
-
-    def compile(self, checkpointer=None):
-        # Placeholder compile logic, this would usually do some graph setup
-        return self
-
-    def stream(self, input_data, config=None, stream_mode=None):
-        # Placeholder for stream method
-        return [{"messages": [{"content": "AI response based on: " + input_data['messages'][0][1]}]}]
-
-# Define chatbot function
+# Define the chatbot function
 def chatbot(state: State):
     # Assuming `llm_model.invoke()` handles the conversation, and state["messages"] holds user inputs.
-    return {"messages": [llm_model.invoke(state["messages"])]}
+    response = llm_model.invoke({"messages": state["messages"]})
+    return {"messages": response["messages"]}
 
 # MemorySaver class (ensure you have this class or replace it as necessary)
 class MemorySaver:
@@ -63,44 +43,58 @@ def therapy_agent():
 
     # Compile the graph (this may include a checkpointer)
     graph = graph_builder.compile(checkpointer=memory)
-    return graph
+    return graph, llm_model
 
 # Emotion therapy function
 def emotion_therapy(user_input: str):
     # Initialize the therapy agent and create the graph
-    graph = therapy_agent()
-    messages = []
-    config = {"configurable": {"thread_id": "1556"}}
+    graph, llm_model = therapy_agent()
+    
+    # Retrieve messages from the state (conversation history)
+    messages = [{"role": "user", "content": user_input}]  # Initial user message
     
     # Simulate a stream of messages from the graph (replace with actual stream logic)
     events = graph.stream(
-        {"messages": [("user", user_input)]},  # Send user input as part of the messages
-        config=config,
+        {"messages": messages},  # Send user input as part of the messages
         stream_mode="values"
     )
 
     # Collect messages from the event stream
+    conversation = []
     for event in events:
-        messages.extend(event['messages'])  # Collect each event message
+        conversation.extend(event['messages'])  # Collect each event message
 
     # Extract the latest AI message from the response
-    # (assuming messages are dictionaries with 'content' keys)
-    ai_messages = [msg for msg in messages if 'content' in msg]
+    ai_messages = [msg for msg in conversation if 'content' in msg]
     
-    return ai_messages[-1]['content'] if ai_messages else None  # Return the last AI message if available
+    return ai_messages[-1]['content'] if ai_messages else "No response from AI."  # Return the last AI message if available
 
 # Streamlit interface
 st.title("Emotion Therapy Chatbot")
+
+# Initialize session state to store messages between interactions
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Display chat history
+for message in st.session_state.messages:
+    if message["role"] == "user":
+        st.write(f"**You**: {message['content']}")
+    else:
+        st.write(f"**AI**: {message['content']}")
 
 # Get user input through Streamlit text input
 user_input = st.text_input("Enter your message:")
 
 if user_input:
+    # Add user message to session state
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    
     # Get the AI response from the emotion therapy function
     result = emotion_therapy(user_input)
     
-    # Display the response or a fallback message if there's no AI response
-    if result:
-        st.write("AI Response:", result)
-    else:
-        st.write("No response from AI.")
+    # Add AI response to session state
+    st.session_state.messages.append({"role": "AI", "content": result})
+    
+    # Rerun the app to show the updated conversation
+    st.experimental_rerun()
