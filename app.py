@@ -1,10 +1,31 @@
-import streamlit as st 
+import streamlit as st
 from typing import List, TypedDict
 from langchain_groq import ChatGroq
 
 # Define the State class with messages as a list of strings
 class State(TypedDict):
     messages: List[str]  # List of messages
+
+# Define a basic StateGraph class (if it is not available from a library)
+class StateGraph:
+    def __init__(self, state_type):
+        self.state_type = state_type
+        self.nodes = {}
+        self.edges = []
+
+    def add_node(self, name, func):
+        self.nodes[name] = func
+
+    def add_edge(self, start, end):
+        self.edges.append((start, end))
+
+    def compile(self, checkpointer=None):
+        # Placeholder compile logic
+        return self
+
+    def stream(self, input_data, config=None, stream_mode=None):
+        # Placeholder for stream method
+        return [{"messages": [{"content": "AI response based on " + input_data['messages'][0][1]}]}]
 
 # Define chatbot function
 def chatbot(state: State):
