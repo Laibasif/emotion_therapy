@@ -1,17 +1,26 @@
-import streamlit as st
+import streamlit as st 
+from typing import List, TypedDict
 from langchain_groq import ChatGroq
-from typing import TypedDict, Annotated
 
-class State(TypedDict): 
-    messages: Annotated[list, add_messages]
+# Define the State class with messages as a list of strings
+class State(TypedDict):
+    messages: List[str]  # List of messages
 
 # Define chatbot function
 def chatbot(state: State):
     return {"messages": [llm_model.invoke(state["messages"])]}
 
-# MemorySaver and therapy agent setup
+# MemorySaver class (ensure you have this class or replace it as necessary)
+class MemorySaver:
+    def __init__(self):
+        self.memory = []
+
+    def save(self, state: dict):
+        self.memory.append(state)
+
 memory = MemorySaver()
 
+# Therapy agent setup
 def therapy_agent():
     graph_builder = StateGraph(State)
     llm_model = ChatGroq(
@@ -28,6 +37,7 @@ def therapy_agent():
     graph = graph_builder.compile(checkpointer=memory)
     return graph
 
+# Emotion therapy function
 def emotion_therapy(memory: str):
     graph = therapy_agent()
     messages = []
@@ -40,10 +50,14 @@ def emotion_therapy(memory: str):
     for event in events:
         messages.extend(event['messages'])  # Collect each event message
 
+    # Filter for the last AIMessage in the accumulated messages
     ai_messages = [msg for msg in messages if isinstance(msg, AIMessage)]
-    return ai_messages[-1].content if ai_messages else None
+    return ai_messages[-1].content if ai_messages else None  # Return the last AI message if available
 
 # Streamlit interface
+import streamlit as st
+
+# Streamlit app setup
 st.title("Emotion Therapy Chatbot")
 user_input = st.text_input("Enter your message:")
 
